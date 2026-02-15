@@ -9,10 +9,28 @@ import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const rawCorsOrigins = String(process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const normalizedCorsOrigins = rawCorsOrigins.map((origin) => origin.replace(/\/+$/, ''));
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/college_campus';
 
-app.use(cors({ origin: CORS_ORIGIN }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (normalizedCorsOrigins.length === 0) return callback(null, true);
+
+      const normalizedOrigin = String(origin).replace(/\/+$/, '');
+      if (normalizedCorsOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+  }),
+);
 app.use(express.json());
 
 const studentSchema = new mongoose.Schema(

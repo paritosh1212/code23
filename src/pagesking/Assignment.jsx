@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import api from '../api/client';
 
 const branches = {
   Engineering: ['Software Engineering', 'Machine Learning', '5G Technology', 'Comp Graphics'],
@@ -14,9 +15,10 @@ function Assignment() {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://localhost:3001/getStudents?branch=' + selectedBranch)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
+    api
+      .get('/getStudents', { params: { branch: selectedBranch } })
+      .then(function(res) {
+        const data = Array.isArray(res.data) ? res.data : [];
         setStudents(data.slice(0, 10));
         setLoading(false);
       })
@@ -59,31 +61,17 @@ function Assignment() {
     formData.append('studentId', studentId);
     formData.append('subject', selectedSubject);
 
-    fetch('http://localhost:3001/upload', {
-      method: 'POST',
-      body: formData,
-    })
-      .then(function(res) {
-        if (res.ok) {
-          setStudents(function(oldList) {
-            return oldList.map(function(s) {
-              if (s._id === studentId) {
-                return { ...s, fileStatus: 'done' };
-              }
-              return s;
-            });
+    api
+      .post('/upload', formData)
+      .then(function() {
+        setStudents(function(oldList) {
+          return oldList.map(function(s) {
+            if (s._id === studentId) {
+              return { ...s, fileStatus: 'done' };
+            }
+            return s;
           });
-        } else {
-          alert('File upload failed.');
-          setStudents(function(oldList) {
-            return oldList.map(function(s) {
-              if (s._id === studentId) {
-                return { ...s, fileStatus: 'failed' };
-              }
-              return s;
-            });
-          });
-        }
+        });
       })
       .catch(function() {
         setStudents(function(oldList) {
@@ -112,21 +100,14 @@ function Assignment() {
       return;
     }
 
-    fetch('http://localhost:3001/submit-assignments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    api
+      .post('/submit-assignments', {
         branch: selectedBranch,
         subject: selectedSubject,
         submittedStudents: list,
-      }),
-    })
-      .then(function(res) {
-        if (res.ok) {
-          alert('Final submit complete. Count: ' + list.length);
-        } else {
-          alert('Final submit failed.');
-        }
+      })
+      .then(function() {
+        alert('Final submit complete. Count: ' + list.length);
       })
       .catch(function() {
         alert('Final submit failed.');
